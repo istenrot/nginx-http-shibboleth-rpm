@@ -1,0 +1,74 @@
+---
+- hosts: all
+  remote_user: vagrant
+  vars_files:
+  - variables.yml
+  vars:
+    nginx_src_rpm: "nginx-{{ nginx_ver }}-1.el7.ngx.src.rpm"
+  tasks:
+  - name: Install EPEL Yum repo
+    yum: name=epel-release state=present
+    become: yes
+    become_user: root
+  - name: Install build tools from CentOS repos
+    yum: name={{ item }} state=present
+    become: yes
+    become_user: root
+    with_items:
+    - ca-certificates
+    - curl
+    - libcurl
+    - git
+    - glib2
+    - rsync
+    - make
+    - patch
+    - bzip2
+    - xz
+    - unzip
+    - tar
+    - autoconf
+    - automake
+    - libtool
+    - zlib-devel
+    - glibc-devel
+    - libaio-devel
+    - pcre-devel
+    - nss-devel
+    - nss-softokn-devel
+    - nss-softokn-freebl-devel
+    - nspr-devel
+    - libgcrypt-devel
+    - libgpg-error-devel
+    - rpm-build
+    - redhat-rpm-config
+    - mock
+    - scl-utils
+    - centos-release-scl-rh
+  - name: Install build tools from Devtoolset-3 repo
+    yum: name={{ item }} state=present
+    become: yes
+    become_user: root
+    with_items:
+    - devtoolset-3-binutils
+    - devtoolset-3-gcc
+    - devtoolset-3-gcc-c++
+  - name: Delete recursively old rpmbuild directory
+    file: dest=rpmbuild state=absent
+  - name: Create new rpmbuild directory
+    file: dest=rpmbuild/BUILD state=directory recurse=yes
+  - name: Download Nginx RPM source package
+    get_url: url=http://nginx.org/packages/centos/7/SRPMS/{{ nginx_src_rpm }} dest=~/rpmbuild/nginx-src.rpm
+  - name: Extract Nginx RPM source package
+    shell: rpm -i ~/rpmbuild/nginx-src.rpm
+  - name: Copy nginx-http-shibboleth development branch from Github
+    get_url: url=https://github.com/nginx-shib/nginx-http-shibboleth/archive/development.zip dest=~/rpmbuild/nginx-http-shibboleth-development.zip
+  - name: Extract nginx-http-shibboleth-development.zip
+    shell: unzip ../nginx-http-shibboleth-development.zip
+    args:
+      chdir: ~/rpmbuild/BUILD
+  - name: Copy RPM spec file to Vagrant box
+    template: src=specs/nginx-http-shibboleth.spec.j2 dest=rpmbuild/SPECS/nginx-http-shibboleth.spec
+  - name: Build RPM packages
+    shell: source /opt/rh/devtoolset-3/enable && rpmbuild -ba rpmbuild/SPECS/nginx-http-shibboleth.spec
+

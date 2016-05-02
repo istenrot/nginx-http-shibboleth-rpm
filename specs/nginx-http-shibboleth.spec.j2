@@ -1,0 +1,146 @@
+#
+%define nginx_home %{_localstatedir}/cache/nginx
+%define nginx_user nginx
+%define nginx_group nginx
+%define nginx_loggroup adm
+
+# distribution specific definitions
+%define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7) || (0%{?suse_version} == 1315)
+
+%if 0%{?rhel}  == 5
+%define _group System Environment/Daemons
+Requires(pre): shadow-utils
+Requires: initscripts >= 8.36
+Requires(post): chkconfig
+%endif
+
+%if 0%{?rhel}  == 6
+%define _group System Environment/Daemons
+%define with_http2 1
+Requires(pre): shadow-utils
+Requires: initscripts >= 8.36
+Requires(post): chkconfig
+%endif
+
+%if 0%{?rhel}  == 7
+%define _group System Environment/Daemons
+%define perlldopts --with-ld-opt="-Wl,-E"
+%define epoch 1
+%define with_http2 1
+Epoch: %{epoch}
+Requires(pre): shadow-utils
+Requires: systemd
+BuildRequires: systemd
+%endif
+
+%if 0%{?suse_version} == 1315
+%define _group Productivity/Networking/Web/Servers
+%define with_http2 1
+%define nginx_loggroup trusted
+Requires(pre): shadow
+Requires: systemd
+BuildRequires: systemd
+%endif
+
+# end of distribution specific definitions
+
+%define main_version                 1.10.0
+%define main_release                 1%{?dist}.ngx
+
+%define bdir %{_builddir}/nginx-%{main_version}
+
+%define WITH_CC_OPT $(echo %{optflags})
+
+%define COMMON_CONFIGURE_ARGS $(echo "\
+        --prefix=%{_sysconfdir}/nginx \
+        --sbin-path=%{_sbindir}/nginx \
+        --modules-path=%{_libdir}/nginx/modules \
+        --conf-path=%{_sysconfdir}/nginx/nginx.conf \
+        --error-log-path=%{_localstatedir}/log/nginx/error.log \
+        --http-log-path=%{_localstatedir}/log/nginx/access.log \
+        --pid-path=%{_localstatedir}/run/nginx.pid \
+        --lock-path=%{_localstatedir}/run/nginx.lock \
+        --http-client-body-temp-path=%{_localstatedir}/cache/nginx/client_temp \
+        --http-proxy-temp-path=%{_localstatedir}/cache/nginx/proxy_temp \
+        --http-fastcgi-temp-path=%{_localstatedir}/cache/nginx/fastcgi_temp \
+        --http-uwsgi-temp-path=%{_localstatedir}/cache/nginx/uwsgi_temp \
+        --http-scgi-temp-path=%{_localstatedir}/cache/nginx/scgi_temp \
+        --user=%{nginx_user} \
+        --group=%{nginx_group} \
+        --add-dynamic-module=../nginx-http-shibboleth-development \
+        --with-threads \
+        --with-ipv6")
+
+Summary: Nginx Shibboleth module
+Name: nginx-http-shibboleth
+Version: %{main_version}
+Release: %{main_release}
+URL: https://github.com/nginx-shib/nginx-http-shibboleth/tree/development
+Group: %{_group}
+Requires: nginx >= %{?epoch:%{epoch}:}%{main_version}-%{main_release}
+
+License: 2-clause BSD-like license
+
+BuildRoot: %{_tmppath}/nginx-%{main_version}-%{main_release}-root
+BuildRequires: zlib-devel
+BuildRequires: pcre-devel
+
+%description
+Shibboleth auth request module for Nginx
+
+%if 0%{?suse_version} == 1315
+%debug_package
+%endif
+
+%prep
+tar xzf ../SOURCES/nginx-%{main_version}.tar.gz
+
+%build
+cd nginx-%{main_version}
+./configure %{COMMON_CONFIGURE_ARGS} \
+    --with-cc-opt="%{WITH_CC_OPT}" \
+    %{?perlldopts} \
+    --with-debug
+make %{?_smp_mflags}
+%{__mv} %{bdir}/objs/ngx_http_shibboleth_module.so \
+    %{bdir}/objs/ngx_http_shibboleth_module-debug.so
+./configure %{COMMON_CONFIGURE_ARGS} \
+    --with-cc-opt="%{WITH_CC_OPT}" \
+    %{?perlldopts}
+make %{?_smp_mflags}
+
+%install
+cd nginx-%{main_version}
+%{__rm} -rf $RPM_BUILD_ROOT
+
+%{__mkdir_p} $RPM_BUILD_ROOT%{_libdir}/nginx/modules
+
+%{__install} -m644 objs/ngx_http_shibboleth_module.so \
+    $RPM_BUILD_ROOT%{_libdir}/nginx/modules/ngx_http_shibboleth_module.so
+
+%{__install} -m644 %{bdir}/objs/ngx_http_shibboleth_module.so \
+    $RPM_BUILD_ROOT%{_libdir}/nginx/modules/ngx_http_shibboleth_module-debug.so
+
+%clean
+%{__rm} -rf $RPM_BUILD_ROOT
+
+%files
+%defattr(-,root,root)
+%attr(0644,root,root) %{_libdir}/nginx/modules/ngx_http_shibboleth_module.so
+%attr(0644,root,root) %{_libdir}/nginx/modules/ngx_http_shibboleth_module-debug.so
+
+%post
+    # print site info
+    cat <<BANNER
+----------------------------------------------------------------------
+
+The Shibboleth dynamic module for nginx has been installed.
+To enable this module, add the following to /etc/nginx/nginx.conf
+and reload nginx:
+
+    load_module modules/ngx_http_shibboleth_module.so;
+
+----------------------------------------------------------------------
+BANNER
+
+

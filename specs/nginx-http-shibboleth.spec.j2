@@ -44,10 +44,10 @@ BuildRequires: systemd
 
 # end of distribution specific definitions
 
-%define main_version                 1.10.0
-%define main_release                 1%{?dist}.ngx
+%define main_version                 {{ nginx_http_shibboleth_rel }}
+%define main_release                 1%{?dist}
 
-%define bdir %{_builddir}/nginx-%{main_version}
+%define bdir %{_builddir}/nginx-{{ nginx_ver }}
 
 %define WITH_CC_OPT $(echo %{optflags})
 
@@ -67,21 +67,21 @@ BuildRequires: systemd
         --http-scgi-temp-path=%{_localstatedir}/cache/nginx/scgi_temp \
         --user=%{nginx_user} \
         --group=%{nginx_group} \
-        --add-dynamic-module=../nginx-http-shibboleth-development \
+        --add-dynamic-module=../nginx-http-shibboleth-{{ nginx_http_shibboleth_rel }} \
         --with-threads \
         --with-ipv6")
 
-Summary: Nginx Shibboleth module
+Summary: Nginx Shibboleth module v{{ nginx_http_shibboleth_rel }}
 Name: nginx-http-shibboleth
 Version: %{main_version}
 Release: %{main_release}
-URL: https://github.com/nginx-shib/nginx-http-shibboleth/tree/development
+URL: https://github.com/nginx-shib/nginx-http-shibboleth/tree/v{{ nginx_http_shibboleth_rel }}
 Group: %{_group}
-Requires: nginx >= %{?epoch:%{epoch}:}%{main_version}-%{main_release}
+Requires: nginx >= %{?epoch:%{epoch}:}{{ nginx_ver }}-1%{?dist}.ngx
 
 License: 2-clause BSD-like license
 
-BuildRoot: %{_tmppath}/nginx-%{main_version}-%{main_release}-root
+BuildRoot: %{_tmppath}/nginx-{{ nginx_ver }}-1%{?dist}.ngx-root
 BuildRequires: zlib-devel
 BuildRequires: pcre-devel
 
@@ -93,10 +93,10 @@ Shibboleth auth request module for Nginx
 %endif
 
 %prep
-tar xzf ../SOURCES/nginx-%{main_version}.tar.gz
+tar xzf ../SOURCES/nginx-{{ nginx_ver }}.tar.gz
 
 %build
-cd nginx-%{main_version}
+cd nginx-{{ nginx_ver }}
 ./configure %{COMMON_CONFIGURE_ARGS} \
     --with-cc-opt="%{WITH_CC_OPT}" \
     %{?perlldopts} \
@@ -110,7 +110,7 @@ make %{?_smp_mflags}
 make %{?_smp_mflags}
 
 %install
-cd nginx-%{main_version}
+cd nginx-{{ nginx_ver }}
 %{__rm} -rf $RPM_BUILD_ROOT
 
 %{__mkdir_p} $RPM_BUILD_ROOT%{_libdir}/nginx/modules

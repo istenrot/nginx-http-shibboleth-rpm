@@ -61,10 +61,10 @@
     get_url: url=http://nginx.org/packages/centos/7/SRPMS/{{ nginx_src_rpm }} dest=~/rpmbuild/nginx-src.rpm
   - name: Extract Nginx RPM source package
     shell: rpm -i ~/rpmbuild/nginx-src.rpm
-  - name: Copy nginx-http-shibboleth development branch from Github
-    get_url: url=https://github.com/nginx-shib/nginx-http-shibboleth/archive/development.zip dest=~/rpmbuild/nginx-http-shibboleth-development.zip
-  - name: Extract nginx-http-shibboleth-development.zip
-    shell: unzip ../nginx-http-shibboleth-development.zip
+  - name: Copy nginx-http-shibboleth release package from Github
+    get_url: url=https://github.com/nginx-shib/nginx-http-shibboleth/archive/v{{ nginx_http_shibboleth_rel }}.zip dest=~/rpmbuild/nginx-http-shibboleth.zip
+  - name: Extract nginx-http-shibboleth.zip
+    shell: unzip ../nginx-http-shibboleth.zip
     args:
       chdir: ~/rpmbuild/BUILD
   - name: Copy RPM spec file to Vagrant box
